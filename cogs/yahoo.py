@@ -159,47 +159,48 @@ class Yahoo(commands.Cog):
         urlstr = f"https://www.espn.com/nfl/schedule/_/week/{str(week)}/year/{str(year)}/seasontype/2"
         response = requests.get(urlstr)
         page = BeautifulSoup(response.content, 'html.parser')
-        subpage = page.find(id='sched-container')
-        schedule_tables = subpage.find_all('table', class_='schedule')
-        schedule_dates = subpage.find_all('h2')
+        schedule_tables = page.find_all(class_='ScheduleTables')
         out = []
-        for i in range(len(schedule_dates)):
+        print(getframeinfo(currentframe()).lineno)
+        for section in schedule_tables:
             # top loop is for the date, schedule_dates[i].text
+            print(getframeinfo(currentframe()).lineno)
 
             # no games scheduled for this date if there is no table head
-            if schedule_tables[i].find('thead') is None:
+            if section.find('thead') is None:
+                print(getframeinfo(currentframe()).lineno)
                 continue
 
             # only take 3 headings if the 4th one is not "nat tv", as finished games would instead have a leading scorer listed
-            headings_max = 4 if schedule_tables[i].find_all('th')[3].find('span').text == 'nat tv' else 3
+            headings_max = 4 if section.find_all('th')[2].text == 'TV' else 3
 
             # populate matches
-            tbody = schedule_tables[i].find('tbody')
+            tbody = section.find('tbody')
             for row in tbody.find_all('tr'):
+                print(getframeinfo(currentframe()).lineno)
                 # Construct Dict object for out: list with each row
                 cells = row.find_all('td')
+                print(getframeinfo(currentframe()).lineno)
 
                 # Get date, teams, and score for finished game
-                if headings_max == 3: out.append({
-                        'date': schedule_dates[i].text,
-                        'team1': cells[0].find('abbr').text,
-                        'team2': cells[1].find('abbr').text,
-                        'team1full': cells[0].find('span').text,
-                        'team2full': cells[1].find('span').text,
+                if headings_max == 3: 
+                    out.append({
+                        'date': section.find(class_='Table__Title').text,
+                        'team1': cells[0].find('a')['href'].split('/')[-2].upper(),
+                        'team2': cells[1].find('a')['href'].split('/')[-2].upper(),
                         'score': cells[2].find('a').text
-                    }
-                )
+                    })
+                    print(getframeinfo(currentframe()).lineno, out[-1]['date'],out[-1]['team1'],out[-1]['team2'],out[-1]['score'])
                 # Get date, time, teams, and TV network for upcoming game
-                elif headings_max == 4: out.append({
-                        'date': schedule_dates[i].text,
-                        'team1': cells[0].find('abbr').text,
-                        'team2': cells[1].find('abbr').text,
-                        'team1full': cells[0].find('span').text,
-                        'team2full': cells[1].find('span').text,
-                        'time': self.parseDataDate(cells[2]['data-date']).lstrip('0'),
+                elif headings_max == 4: 
+                    out.append({
+                        'date': section.find(class_='Table__Title').text,
+                        'team1': cells[0].find('a')['href'].split('/')[-2].upper(),
+                        'team2': cells[1].find('a')['href'].split('/')[-2].upper(),
+                        'time': cells[2].text.replace(' ', ''),
                         'tv': cells[3].text
-                    }
-                )
+                    })
+                    print(getframeinfo(currentframe()).lineno, out[-1]['date'],out[-1]['team1'],out[-1]['team2'],out[-1]['time'],out[-1]['tv'], (out[-1]['tv'] is None))
         return out
 
     # returns list of NFL game status strings formatted for gameday board
@@ -520,16 +521,17 @@ class Yahoo(commands.Cog):
         """
         Register a team in the league to yourself. This facilitates other commands such as `wb ff team` to show you your own team by default.
         """
-        # Pull team ID info
-        leagueTeams = self.getTeams()
+        async with ctx.channel.typing():
+            # Pull team ID info
+            leagueTeams = self.getTeams()
 
-        # Stop if teamNo is bad
-        if (teamNo < 0 or teamNo > len(leagueTeams)):
-            await ctx.send(":rotating_light: Invalid Team ID number. Check IDs by using `wb ff league` and try again.")
-            return
+            # Stop if teamNo is bad
+            if (teamNo < 0 or teamNo > len(leagueTeams)):
+                await ctx.send(":rotating_light: Invalid Team ID number. Check IDs by using `wb ff league` and try again.")
+                return
 
-        # Check for commanding user in the FantasyManagers mongodb doc
-        existing_entry = await self.find_user(str(ctx.author.id))
+            # Check for commanding user in the FantasyManagers mongodb doc
+            existing_entry = await self.find_user(str(ctx.author.id))
 
         # If this is a new user
         if (existing_entry is None):
@@ -559,50 +561,48 @@ class Yahoo(commands.Cog):
         """
         Retrieve Yahoo Fantasy teams and IDs.
         """
-        await ctx.message.add_reaction(constants.AFFIRMATIVE_REACTION_EMOJI)
-        leagueTeams = self.getTeams()
+        async with ctx.channel.typing():
+            leagueTeams = self.getTeams()
 
-        output = '  # | Team Name              | Manager(s)   \n'
-        for i in leagueTeams:
-            team: Team = i['team']
-            id = ' ' + str(team.team_id).rjust(2, ' ') + ' |'
-            name = ' ' + str(team.name, 'UTF-8').ljust(22, ' ') + ' |'
-            managers = ' ' + team.managers['manager'].nickname
+            output = '  # | Team Name              | Manager(s)   \n'
+            for i in leagueTeams:
+                team: Team = i['team']
+                id = ' ' + str(team.team_id).rjust(2, ' ') + ' |'
+                name = ' ' + str(team.name, 'UTF-8').ljust(22, ' ') + ' |'
+                managers = ' ' + team.managers['manager'].nickname
 
-            output += (id + name + managers).ljust(44, ' ') + '\n'
+                output += (id + name + managers).ljust(44, ' ') + '\n'
 
-        embed: discord.Embed = discord.Embed(color=0x99AAB5)
-        embed.add_field(name='League: ' + constants.YAHOO_FANTASY_LEAGUE_NAME, value='```' + output + '```')
+            embed: discord.Embed = discord.Embed(color=0x99AAB5)
+            embed.add_field(name='League: ' + constants.YAHOO_FANTASY_LEAGUE_NAME, value='```' + output + '```')
 
         msg = await ctx.send(embed=embed)
-        await ctx.message.remove_reaction(constants.AFFIRMATIVE_REACTION_EMOJI, msg.author)
 
     @ff.command(name='standings')
     async def standings(self, ctx):
         """
         Display the current standings page for the fantasy league.
         """
-        await ctx.message.add_reaction(constants.AFFIRMATIVE_REACTION_EMOJI)
-        standings: Standings = self.getStandings()
+        async with ctx.channel.typing():
+            standings: Standings = self.getStandings()
 
-        top3 = 'Rank|' + 'Team Name'.ljust(19, ' ') + '| W-L-T |Pts For|Pts Agn|Strk|Wv|Mv\n'
-        for teamObj in standings.teams:
-            team: Team = teamObj['team']
-            rank = '   0|' if team.team_standings.rank is None else (str(team.team_standings.rank) + '|').rjust(5, ' ')
-            name = '' + str(team.name, 'UTF-8')[:19].ljust(19, ' ') + '|'
-            wlt = '' + str(team.wins).rjust(2, ' ') + ('-' + str(team.losses) + '-' + str(team.ties)).ljust(5, ' ') + '|'
-            ptsFor = '' + (str(round(team.points_for, 2)) + ('0' if str(round(team.points_for, 2))[-2] == '.' else '')).rjust(7, ' ') + '|'
-            ptsAgnst = '' + (str(round(team.points_against, 2)) + ('0' if str(round(team.points_against, 2))[-2] == '.' else '')).rjust(7, ' ') + '|'
-            streak = '' + (' ' if team.streak_type == '' else team.streak_type[:1].upper()) + '-' + str(team.streak_length).ljust(2, ' ') + '|'
-            waiver = '' + ('0' if team.waiver_priority is None else str(team.waiver_priority)).rjust(2, ' ') + '|'
-            moves = '' + ('0' if team.number_of_moves is None else str(team.number_of_moves)).rjust(2, ' ')
-            top3 += rank + name + wlt + ptsFor + ptsAgnst + streak + waiver + moves + '\n'
+            top3 = 'Rank|' + 'Team Name'.ljust(19, ' ') + '| W-L-T |Pts For|Pts Agn|Strk|Wv|Mv\n'
+            for teamObj in standings.teams:
+                team: Team = teamObj['team']
+                rank = '   0|' if team.team_standings.rank is None else (str(team.team_standings.rank) + '|').rjust(5, ' ')
+                name = '' + str(team.name, 'UTF-8')[:19].ljust(19, ' ') + '|'
+                wlt = '' + str(team.wins).rjust(2, ' ') + ('-' + str(team.losses) + '-' + str(team.ties)).ljust(5, ' ') + '|'
+                ptsFor = '' + (str(round(team.points_for, 2)) + ('0' if str(round(team.points_for, 2))[-2] == '.' else '')).rjust(7, ' ') + '|'
+                ptsAgnst = '' + (str(round(team.points_against, 2)) + ('0' if str(round(team.points_against, 2))[-2] == '.' else '')).rjust(7, ' ') + '|'
+                streak = '' + (' ' if team.streak_type == '' else team.streak_type[:1].upper()) + '-' + str(team.streak_length).ljust(2, ' ') + '|'
+                waiver = '' + ('0' if team.waiver_priority is None else str(team.waiver_priority)).rjust(2, ' ') + '|'
+                moves = '' + ('0' if team.number_of_moves is None else str(team.number_of_moves)).rjust(2, ' ')
+                top3 += rank + name + wlt + ptsFor + ptsAgnst + streak + waiver + moves + '\n'
 
-        embed: discord.Embed = discord.Embed(color=0x99AAB5)
-        embed.add_field(name=('' + constants.YAHOO_FANTASY_LEAGUE_NAME + ' Standings'), value='```' + top3 + '```', inline=True)
+            embed: discord.Embed = discord.Embed(color=0x99AAB5)
+            embed.add_field(name=('' + constants.YAHOO_FANTASY_LEAGUE_NAME + ' Standings'), value='```' + top3 + '```', inline=True)
 
         msg = await ctx.send(embed=embed)
-        await ctx.message.remove_reaction(constants.AFFIRMATIVE_REACTION_EMOJI, msg.author)
 
     # potentially include live IRL NFL scoreboard stuff with this, and extend that to the gameday routine.
     @ff.command(name='scoreboard')
@@ -615,33 +615,31 @@ class Yahoo(commands.Cog):
         valid, week = await self.validateWeekArg(ctx, week)
         if (not valid): return
 
-        await ctx.message.add_reaction(constants.AFFIRMATIVE_REACTION_EMOJI)
+        async with ctx.channel.typing():
 
-        scoreboard: Scoreboard = self.getScoreboard(week)
-        embedNames = [None] * len(scoreboard.matchups)
-        embedValues = [None] * len(scoreboard.matchups)
-    
-        for i in range(len(scoreboard.matchups)):
-            embedNames[i], embedValues[i] = self.do_matchup(scoreboard.matchups[i], i + 1)
-
-        # Create discord thread for all these messages
-        scoreThread = await ctx.message.create_thread(name='Week ' + str(week) + ' Scoreboard')
-
-        # split do_matchup output into alternative lists 
-        # to be combined for two-per-discord-message
+            scoreboard: Scoreboard = self.getScoreboard(week)
+            embedNames = [None] * len(scoreboard.matchups)
+            embedValues = [None] * len(scoreboard.matchups)
         
-        embeds = []
-        for n, v in zip(embedNames, embedValues): 
-            embed = discord.Embed(color=0x99AAB5)
-            embed.add_field(name=n, value=v, inline=False)
-            embeds.append(embed)
+            for i in range(len(scoreboard.matchups)):
+                embedNames[i], embedValues[i] = self.do_matchup(scoreboard.matchups[i], i + 1)
+
+            # Create discord thread for all these messages
+            scoreThread = await ctx.message.create_thread(name='Week ' + str(week) + ' Scoreboard')
+
+            # split do_matchup output into alternative lists 
+            # to be combined for two-per-discord-message
+            
+            embeds = []
+            for n, v in zip(embedNames, embedValues): 
+                embed = discord.Embed(color=0x99AAB5)
+                embed.add_field(name=n, value=v, inline=False)
+                embeds.append(embed)
         msg = await scoreThread.send(embeds=embeds)
 
         end = datetime.datetime.now()
         print(start)
         print(end)
-        
-        await ctx.message.remove_reaction(constants.AFFIRMATIVE_REACTION_EMOJI, msg.author)
 
     @ff.command(name='matchups')
     async def matchups(self, ctx, week: int = 0):
@@ -650,25 +648,23 @@ class Yahoo(commands.Cog):
         """
         valid, week = await self.validateWeekArg(ctx, week)
         if (not valid): return
-        await ctx.message.add_reaction(constants.AFFIRMATIVE_REACTION_EMOJI)
+        async with ctx.channel.typing():
 
-        scoreboard: Scoreboard = self.getScoreboard(week)
-        title = 'Week ' + str(week) + ' Matchups:'
-        output = ''
-        for index, matchupObj in enumerate(scoreboard.matchups, start=1):
-            matchup: Matchup = matchupObj['matchup']
+            scoreboard: Scoreboard = self.getScoreboard(week)
+            title = 'Week ' + str(week) + ' Matchups:'
+            output = ''
+            for index, matchupObj in enumerate(scoreboard.matchups, start=1):
+                matchup: Matchup = matchupObj['matchup']
 
-            team1: Team = matchup.teams[0]['team']
-            team2: Team = matchup.teams[1]['team']
-            manager1: str = ' (' + team1.managers['manager'].nickname + ')'
-            manager2: str = ' (' + team2.managers['manager'].nickname + ')'
-            output += '' + str(index) + ': ' + (str(team1.name, 'UTF-8') + manager1)[:26].rjust(26, ' ') + ' vs. ' + (str(team2.name, 'UTF-8') + manager2)[:26].ljust(26, ' ') + '\n'
+                team1: Team = matchup.teams[0]['team']
+                team2: Team = matchup.teams[1]['team']
+                manager1: str = ' (' + team1.managers['manager'].nickname + ')'
+                manager2: str = ' (' + team2.managers['manager'].nickname + ')'
+                output += '' + str(index) + ': ' + (str(team1.name, 'UTF-8') + manager1)[:26].rjust(26, ' ') + ' vs. ' + (str(team2.name, 'UTF-8') + manager2)[:26].ljust(26, ' ') + '\n'
 
-        embed: discord.Embed = discord.Embed(color=0x99AAB5)
-        embed.add_field(name=title, value='```' + output + '```')
+            embed: discord.Embed = discord.Embed(color=0x99AAB5)
+            embed.add_field(name=title, value='```' + output + '```')
         msg = await ctx.send(embed=embed)
-        
-        await ctx.message.remove_reaction(constants.AFFIRMATIVE_REACTION_EMOJI, msg.author)
 
     @ff.command(name='matchup')
     @enforce_user_registered()
@@ -684,15 +680,12 @@ class Yahoo(commands.Cog):
         valid, matchup = await self.validateMatchupArg(ctx, scoreboard, matchup)
         if (not valid): return
 
-        await ctx.message.add_reaction(constants.AFFIRMATIVE_REACTION_EMOJI)
-
-        # write matchup with the same code that writes the scoreboard, then send to discord non-threaded
-        embedName, embedValue = self.do_matchup(scoreboard.matchups[matchup-1], matchup)
-        embed = discord.Embed(color=0x99AAB5)
-        embed.add_field(name=embedName, value=embedValue, inline=False)
+        async with ctx.channel.typing():
+            # write matchup with the same code that writes the scoreboard, then send to discord non-threaded
+            embedName, embedValue = self.do_matchup(scoreboard.matchups[matchup-1], matchup)
+            embed = discord.Embed(color=0x99AAB5)
+            embed.add_field(name=embedName, value=embedValue, inline=False)
         msg = await ctx.send(embed=embed)
-
-        await ctx.message.remove_reaction(constants.AFFIRMATIVE_REACTION_EMOJI, msg.author) 
         
     @ff.command(name='team')
     @enforce_user_registered()  
@@ -706,61 +699,60 @@ class Yahoo(commands.Cog):
         valid, week = await self.validateWeekArg(ctx, week)
         if (not valid): return
 
-        await ctx.message.add_reaction(constants.AFFIRMATIVE_REACTION_EMOJI)
+        async with ctx.channel.typing():
 
-        players = self.getTeamPlayerStats(team.team_id, week)
-        playerNames = []
-        for player in players:
-            if (player['player'].primary_position == 'DEF'): playerNames.append((player['player'].editorial_team_full_name.split(' ')[-1] + ' D/ST_16'))
-            else: playerNames.append(player['player'].full_name + '_' + str(constants.POSITION_MAP[player['player'].primary_position]))
-        teamProjections = self.get_all_player_projections(playerNames, week)
+            players = self.getTeamPlayerStats(team.team_id, week)
+            playerNames = []
+            for player in players:
+                if (player['player'].primary_position == 'DEF'): playerNames.append((player['player'].editorial_team_full_name.split(' ')[-1] + ' D/ST_16'))
+                else: playerNames.append(player['player'].full_name + '_' + str(constants.POSITION_MAP[player['player'].primary_position]))
+            teamProjections = self.get_all_player_projections(playerNames, week)
 
-        gameStates = self.getLiveGameStates(week)
+            gameStates = self.getLiveGameStates(week)
 
-        def findGameForPlayer(games: list, player: Player):
-            abbr = player.editorial_team_abbr.upper()
-            opponent = ''
-            for game in games:
-                if (game['team1'] == abbr): 
-                    opponent = ' @ ' + game['team2']
-                elif (game['team2'] == abbr):
-                    opponent = ' v ' + game['team1']
-                else: continue
-                if 'tv' in game: # not yet played game
-                    weekday = game['date'].split(', ')[0][:3]
-                    return (weekday + ' ' + game['time'] + opponent.ljust(6, ' ') + ' on ' + ('ABC' if game['tv'] is '' else game['tv']))
-                else: # game is over or in progress
-                    scores = game['score'].split(', ')
-                    winnerPts = scores[0].split()[1]
-                    loserPts = scores[1].split()[1]
-                    playerWon = True if scores[0].split()[0] == abbr else False
-                    return ('Final ' + ('W' if playerWon else 'L') + ' ' + winnerPts + '-' + loserPts.ljust(2, ' ') + opponent)
-            return 'Game Info Not Found'
+            def findGameForPlayer(games: list, player: Player):
+                abbr = player.editorial_team_abbr.upper()
+                opponent = ''
+                for game in games:
+                    if (game['team1'] == abbr): 
+                        opponent = ' @ ' + game['team2']
+                    elif (game['team2'] == abbr):
+                        opponent = ' v ' + game['team1']
+                    else: continue
+                    if 'tv' in game: # not yet played game
+                        weekday = game['date'].split(', ')[0][:3]
+                        return (weekday + ' ' + game['time'] + opponent.ljust(6, ' ') + ' on ' + ('ABC' if game['tv'] is '' else game['tv']))
+                    else: # game is over or in progress
+                        scores = game['score'].split(', ')
+                        winnerPts = scores[0].split()[1]
+                        loserPts = scores[1].split()[1]
+                        playerWon = True if scores[0].split()[0] == abbr else False
+                        return ('Final ' + ('W' if playerWon else 'L') + ' ' + winnerPts + '-' + loserPts.ljust(2, ' ') + opponent)
+                return 'Game Info Not Found'
 
-        embedTitle = 'Team ' + str(team.team_id) + ' (Week ' + str(week) + '):'
-        embedValues = ['   | ' + 'Info'.ljust(11, ' ') + '|' + 'Player'.ljust(10, ' ') + ' | ' + 'Pnts.'.ljust(6, ' ') + '| Game\n'] * 2
+            embedTitle = 'Team ' + str(team.team_id) + ' (Week ' + str(week) + '):'
+            embedValues = ['   | ' + 'Info'.ljust(11, ' ') + '|' + 'Player'.ljust(10, ' ') + ' | ' + 'Pnts.'.ljust(6, ' ') + '| Game\n'] * 2
 
-        # output these players in an all new formatted code-block table
-        for i, playerObj in enumerate(players):
-            player: Player = playerObj['player']
-            embedIndex = 0
-            if (player.selected_position.position == 'BN' or player.selected_position.position == 'IR'): embedIndex = 1
-            selectedPosition = 'FLX' if player.selected_position.position == 'W/R/T' else player.selected_position.position
-            abbr = player.editorial_team_abbr.ljust(3, ' ')
-            number = ('#' + str(player.uniform_number)).ljust(4, ' ') if (player.uniform_number is not False and player.uniform_number is not None) else '    '
-            primaryPosition = (player.primary_position).ljust(3, ' ')
-            name = ('' + player.first_name[:1] + '.' + player.last_name) if player.last_name is not None else player.full_name
-            points = ' 0.0 ' if player.player_points.total is None else ((' ' if player.player_points.total < 10.0 else '') + str(player.player_points.total))
-            proj = (str(teamProjections[i]) + (' ' if str(teamProjections[i])[-2] == '.' else ''))
-            if (points == ' 0.0 '): points = proj
-            game = findGameForPlayer(gameStates, player)
-            embedValues[embedIndex] += '' + selectedPosition.ljust(3, ' ') + '| ' + abbr + ' ' + number + primaryPosition + '|' + name[:10].ljust(10, ' ') + ' | ' + points.ljust(5, ' ') + ' | ' + game[:24] + '\n'
-            
-        embed = discord.Embed(color=0x99AAB5)
-        embed.add_field(name=embedTitle, value=('```' + embedValues[0] + '```'), inline=False)
-        embed.add_field(name='Bench', value=('```' + embedValues[1] + '```'), inline=False)
+            # output these players in an all new formatted code-block table
+            for i, playerObj in enumerate(players):
+                player: Player = playerObj['player']
+                embedIndex = 0
+                if (player.selected_position.position == 'BN' or player.selected_position.position == 'IR'): embedIndex = 1
+                selectedPosition = 'FLX' if player.selected_position.position == 'W/R/T' else player.selected_position.position
+                abbr = player.editorial_team_abbr.ljust(3, ' ')
+                number = ('#' + str(player.uniform_number)).ljust(4, ' ') if (player.uniform_number is not False and player.uniform_number is not None) else '    '
+                primaryPosition = (player.primary_position).ljust(3, ' ')
+                name = ('' + player.first_name[:1] + '.' + player.last_name) if player.last_name is not None else player.full_name
+                points = ' 0.0 ' if player.player_points.total is None else ((' ' if player.player_points.total < 10.0 else '') + str(player.player_points.total))
+                proj = (str(teamProjections[i]) + (' ' if str(teamProjections[i])[-2] == '.' else ''))
+                if (points == ' 0.0 '): points = proj
+                game = findGameForPlayer(gameStates, player)
+                embedValues[embedIndex] += '' + selectedPosition.ljust(3, ' ') + '| ' + abbr + ' ' + number + primaryPosition + '|' + name[:10].ljust(10, ' ') + ' | ' + points.ljust(5, ' ') + ' | ' + game[:23] + '\n'
+                
+            embed = discord.Embed(color=0x99AAB5)
+            embed.add_field(name=embedTitle, value=('```' + embedValues[0] + '```'), inline=False)
+            embed.add_field(name='Bench', value=('```' + embedValues[1] + '```'), inline=False)
         msg = await ctx.send(embed=embed)
-        await ctx.message.remove_reaction(constants.AFFIRMATIVE_REACTION_EMOJI, msg.author) 
 
         
     @ff.command(name='gameday')
@@ -769,50 +761,49 @@ class Yahoo(commands.Cog):
         """
         Display and pin the league scoreboard with live updates (edits) every 60s until the day's games are over.
         """
-        await ctx.message.add_reaction(constants.AFFIRMATIVE_REACTION_EMOJI)
 
-        # get all registered users and their teams
-        print(getframeinfo(currentframe()).lineno)
-        userList = await self.find_all_users()
-        scoreboard: Scoreboard = self.getScoreboard(self.getIntCurrentWeek())
-        relevantMatchups = []
-        accountedTeamIds = []
-        for matchupObj in scoreboard.matchups:
-            matchup: Matchup = matchupObj['matchup']
-            for user in userList:
-                teamId = user.team
-                # skip accounted-for team
-                if (teamId in accountedTeamIds): continue
-                # account for both teams
-                if (teamId == matchup.teams[0]['team'].team_id or teamId == matchup.teams[1]['team'].team_id):
-                    relevantMatchups.append(matchupObj)
-                    accountedTeamIds.append(matchup.teams[0]['team'].team_id)
-                    accountedTeamIds.append(matchup.teams[1]['team'].team_id)
-                    break
+        async with ctx.channel.typing():
+            # get all registered users and their teams
+            print(getframeinfo(currentframe()).lineno)
+            userList = await self.find_all_users()
+            scoreboard: Scoreboard = self.getScoreboard(self.getIntCurrentWeek())
+            relevantMatchups = []
+            accountedTeamIds = []
+            for matchupObj in scoreboard.matchups:
+                matchup: Matchup = matchupObj['matchup']
+                for user in userList:
+                    teamId = user.team
+                    # skip accounted-for team
+                    if (teamId in accountedTeamIds): continue
+                    # account for both teams
+                    if (teamId == matchup.teams[0]['team'].team_id or teamId == matchup.teams[1]['team'].team_id):
+                        relevantMatchups.append(matchupObj)
+                        accountedTeamIds.append(matchup.teams[0]['team'].team_id)
+                        accountedTeamIds.append(matchup.teams[1]['team'].team_id)
+                        break
+            
+            embedNames = [None] * len(relevantMatchups)
+            embedValues = [None] * len(relevantMatchups)
         
-        embedNames = [None] * len(relevantMatchups)
-        embedValues = [None] * len(relevantMatchups)
-    
-        for i in range(len(relevantMatchups)):
-            embedNames[i], embedValues[i] = self.do_matchup(relevantMatchups[i], i + 1)
-                    # Create discord thread for all these messages
-        
-        nowDateString = datetime.date.today().strftime(f"%m-%d")
-        embeds = []
-        for n, v in zip(embedNames, embedValues): 
-            embed = discord.Embed(color=0x99AAB5)
-            embed.add_field(name=n, value=v, inline=False)
-            embeds.append(embed)
+            for i in range(len(relevantMatchups)):
+                embedNames[i], embedValues[i] = self.do_matchup(relevantMatchups[i], i + 1)
+                        # Create discord thread for all these messages
+            
+            nowDateString = datetime.date.today().strftime(f"%m-%d")
+            embeds = []
+            for n, v in zip(embedNames, embedValues): 
+                embed = discord.Embed(color=0x99AAB5)
+                embed.add_field(name=n, value=v, inline=False)
+                embeds.append(embed)
 
-        nowDateString = self.parseUTCDateToDate(datetime.date.today().strftime(f'%Y-%m-%dT%H:%MZ'))
+            nowDateString = self.parseUTCDateToDate(datetime.date.today().strftime(f'%Y-%m-%dT%H:%MZ'))
 
-        # All game info
-        live, NFLembed = self.getNFLScoreboardEndpoint(nowDateString)
-        embeds.append(NFLembed)
+            # All game info
+            live, NFLembed = self.getNFLScoreboardEndpoint(nowDateString)
+            embeds.append(NFLembed)
 
         gamedayThread = await ctx.message.create_thread(name='Gameday ' + nowDateString)
         msg = await gamedayThread.send(embeds=embeds)
-        await ctx.message.remove_reaction(constants.AFFIRMATIVE_REACTION_EMOJI, msg.author)
         
         if (live):
             self.gamedayLoop.start(msg=msg)
@@ -820,41 +811,43 @@ class Yahoo(commands.Cog):
     # edits the gameday matchups/scoreboard every 60 seconds with up-to-the-minute information
     @tasks.loop(seconds=60)
     async def gamedayLoop(self, msg):
-         # get all registered users and their teams
-        print(getframeinfo(currentframe()).lineno)
-        userList = await self.find_all_users()
-        scoreboard: Scoreboard = self.getScoreboard(self.getIntCurrentWeek())
-        relevantMatchups = []
-        accountedTeamIds = []
-        for matchupObj in scoreboard.matchups:
-            matchup: Matchup = matchupObj['matchup']
-            for user in userList:
-                teamId = user.team
-                # skip accounted-for team
-                if (teamId in accountedTeamIds): continue
-                # account for both teams
-                if (teamId == matchup.teams[0]['team'].team_id or teamId == matchup.teams[1]['team'].team_id):
-                    relevantMatchups.append(matchupObj)
-                    accountedTeamIds.append(matchup.teams[0]['team'].team_id)
-                    accountedTeamIds.append(matchup.teams[1]['team'].team_id)
-                    break
         
-        embedNames = [None] * len(relevantMatchups)
-        embedValues = [None] * len(relevantMatchups)
-    
-        for i in range(len(relevantMatchups)):
-            embedNames[i], embedValues[i] = self.do_matchup(relevantMatchups[i], i + 1)
-                    # Create discord thread for all these messages
+        async with msg.channel.typing():
+            # get all registered users and their teams
+            print(getframeinfo(currentframe()).lineno)
+            userList = await self.find_all_users()
+            scoreboard: Scoreboard = self.getScoreboard(self.getIntCurrentWeek())
+            relevantMatchups = []
+            accountedTeamIds = []
+            for matchupObj in scoreboard.matchups:
+                matchup: Matchup = matchupObj['matchup']
+                for user in userList:
+                    teamId = user.team
+                    # skip accounted-for team
+                    if (teamId in accountedTeamIds): continue
+                    # account for both teams
+                    if (teamId == matchup.teams[0]['team'].team_id or teamId == matchup.teams[1]['team'].team_id):
+                        relevantMatchups.append(matchupObj)
+                        accountedTeamIds.append(matchup.teams[0]['team'].team_id)
+                        accountedTeamIds.append(matchup.teams[1]['team'].team_id)
+                        break
+            
+            embedNames = [None] * len(relevantMatchups)
+            embedValues = [None] * len(relevantMatchups)
         
-        embeds = []
-        for n, v in zip(embedNames, embedValues): 
-            embed = discord.Embed(color=0x99AAB5)
-            embed.add_field(name=n, value=v, inline=False)
-            embeds.append(embed)
+            for i in range(len(relevantMatchups)):
+                embedNames[i], embedValues[i] = self.do_matchup(relevantMatchups[i], i + 1)
+                        # Create discord thread for all these messages
+            
+            embeds = []
+            for n, v in zip(embedNames, embedValues): 
+                embed = discord.Embed(color=0x99AAB5)
+                embed.add_field(name=n, value=v, inline=False)
+                embeds.append(embed)
 
-        # All game info
-        live, NFLembed = self.getNFLScoreboardEndpoint(self.parseUTCDateToDate(datetime.date.today().strftime(f'%Y-%m-%dT%H:%MZ')))
-        embeds.append(NFLembed)
+            # All game info
+            live, NFLembed = self.getNFLScoreboardEndpoint(self.parseUTCDateToDate(datetime.date.today().strftime(f'%Y-%m-%dT%H:%MZ')))
+            embeds.append(NFLembed)
         msg = await msg.edit(embeds=embeds)
 
         if not live: 

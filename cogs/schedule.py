@@ -129,7 +129,7 @@ class Schedule(commands.Cog):
         print('about to iterate over date objects on schedule page')
 
         # depending on the league, date subtables are denoted by id sched-container (nfl, cfb) OR class ScheduleTables (everything else)
-        if league_name == 'nfl' or league_name == 'college-football' or league_name == 'wnba':
+        if league_name == 'college-football' or league_name == 'wnba':
             subpage = page.find(id='sched-container')
             schedule_tables = subpage.find_all('table', class_='schedule')
             schedule_dates = subpage.find_all('h2')
