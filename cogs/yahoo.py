@@ -1,3 +1,4 @@
+from asyncio import sleep
 import nextcord as discord
 import json
 import datetime
@@ -857,8 +858,9 @@ class Yahoo(commands.Cog):
         msg = await msg.edit(embeds=embeds)
 
         if not live: 
-            await msg.channel.send('Today\'s games have ended.')
             self.gamedayLoop.stop()
+            sleep(minutes=300)
+            await msg.channel.send('Today\'s games have ended.')
 
 def setup(bot):
     bot.add_cog(Yahoo(bot))
