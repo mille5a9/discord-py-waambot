@@ -5,6 +5,7 @@
     "espn_swid": "{ESPN SWID from your browser cookies}",
     "espn_s2": "ESPN s2 from your browser cookies (superlong string)",
     "league_id": "YAHOO_FANTASY_LEAGUE_ID",
+    "league_name": "YAHOO_LEAGUE_NAME",
     "old_game_id": "GAME_ID for old yahoo fantasy league (not required for current year)",
     "timezone": "Look up a pytz timezone for the location of your bot server",
     "year": "2022"

@@ -600,7 +600,7 @@ class Yahoo(commands.Cog):
                 top3 += rank + name + wlt + ptsFor + ptsAgnst + streak + waiver + moves + '\n'
 
             embed: discord.Embed = discord.Embed(color=0x99AAB5)
-            embed.add_field(name=('' + constants.YAHOO_FANTASY_LEAGUE_NAME + ' Standings'), value='```' + top3 + '```', inline=True)
+            embed.add_field(name=('' + self.config['league_name'] + ' Standings'), value='```' + top3 + '```', inline=True)
 
         msg = await ctx.send(embed=embed)
 
