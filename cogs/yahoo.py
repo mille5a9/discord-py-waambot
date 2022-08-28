@@ -257,7 +257,7 @@ class Yahoo(commands.Cog):
                 if ('possession' in situation and situation['possession'] == team1['id']): team1Name = '\>' + team1Name
                 elif ('possession' in situation and situation['possession'] == team2['id']): team2Name = '\>' + team2Name
                 dnd = situation['downDistanceText'] if ('downDistanceText' in situation) else ''
-                lastPlay = situation['lastPlay']['text']
+                lastPlay = situation['lastPlay']['text'] if 'lastPlay' in situation else 'Waiting for first play...'
                 clock = game['status']['type']['shortDetail']
 
                 gamecast = '[Gamecast](' + game['links'][0]['href'] + ') '
@@ -789,14 +789,13 @@ class Yahoo(commands.Cog):
                 embedNames[i], embedValues[i] = self.do_matchup(relevantMatchups[i], i + 1)
                         # Create discord thread for all these messages
             
-            nowDateString = datetime.date.today().strftime(f"%m-%d")
             embeds = []
             for n, v in zip(embedNames, embedValues): 
                 embed = discord.Embed(color=0x99AAB5)
                 embed.add_field(name=n, value=v, inline=False)
                 embeds.append(embed)
 
-            nowDateString = self.parseUTCDateToDate(datetime.date.today().strftime(f'%Y-%m-%dT%H:%MZ'))
+            nowDateString = self.parseUTCDateToDate(datetime.datetime.now().strftime(f'%Y-%m-%dT%H:%MZ'))
 
             # All game info
             live, NFLembed = self.getNFLScoreboardEndpoint(nowDateString)
@@ -806,11 +805,15 @@ class Yahoo(commands.Cog):
         msg = await gamedayThread.send(embeds=embeds)
         
         if (live):
+            print("Starting gameday loop")
             self.gamedayLoop.start(msg=msg)
+        else:
+            print("Not live: no looping")
 
     # edits the gameday matchups/scoreboard every 60 seconds with up-to-the-minute information
     @tasks.loop(seconds=60)
     async def gamedayLoop(self, msg):
+        print("Beginning a loop")
         
         async with msg.channel.typing():
             # get all registered users and their teams
@@ -837,7 +840,6 @@ class Yahoo(commands.Cog):
         
             for i in range(len(relevantMatchups)):
                 embedNames[i], embedValues[i] = self.do_matchup(relevantMatchups[i], i + 1)
-                        # Create discord thread for all these messages
             
             embeds = []
             for n, v in zip(embedNames, embedValues): 
@@ -845,15 +847,19 @@ class Yahoo(commands.Cog):
                 embed.add_field(name=n, value=v, inline=False)
                 embeds.append(embed)
 
+            nowDateString = self.parseUTCDateToDate(datetime.datetime.now().strftime(f'%Y-%m-%dT%H:%MZ'))
+
             # All game info
-            live, NFLembed = self.getNFLScoreboardEndpoint(self.parseUTCDateToDate(datetime.date.today().strftime(f'%Y-%m-%dT%H:%MZ')))
+            live, NFLembed = self.getNFLScoreboardEndpoint(nowDateString)
             embeds.append(NFLembed)
         msg = await msg.edit(embeds=embeds)
+        print("Ending a loop at " + str(datetime.datetime.now()))
 
         if not live: 
-            self.gamedayLoop.stop()
-            sleep(minutes=300)
+            print("Stopping gameday loop")
+            await sleep(300)
             await msg.channel.send('Today\'s games have ended.')
+            self.gamedayLoop.stop()
 
 def setup(bot):
     bot.add_cog(Yahoo(bot))
