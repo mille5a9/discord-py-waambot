@@ -21,10 +21,14 @@ class EmoteHistory(commands.Cog):
         output += '```'
         return output
 
-    @commands.group(aliases=['tally', 'emotehistory'])
-    async def base_tally(self, ctx): pass
+    @commands.group(aliases=['emotehistory'])
+    async def tally(self, ctx):
+        """
+        Provides total count of emote usage in a channel or group of channels, with or without reactions included.
+        """
+        pass
 
-    @base_tally.command(name='emotes')
+    @tally.command(name='emotes')
     @commands.bot_has_permissions(read_message_history=True)
     async def emotes(self, ctx, channel:discord.TextChannel, after, endRange=None):
         """
@@ -49,7 +53,7 @@ class EmoteHistory(commands.Cog):
         msg = await ctx.send(self.printDict(dict(sorted(emote_dict.items(), key=lambda x: x[1], reverse=True))))
         await ctx.message.remove_reaction(constants.AFFIRMATIVE_REACTION_EMOJI, msg.author)
     
-    @base_tally.command(name='reactions')
+    @tally.command(name='reactions')
     @commands.bot_has_permissions(read_message_history=True)
     async def reactions(self, ctx, channel:discord.TextChannel, after, endRange=None):
         """
@@ -74,7 +78,7 @@ class EmoteHistory(commands.Cog):
         msg = await ctx.send(self.printDict(dict(sorted(emote_dict.items(), key=lambda x: x[1], reverse=True))))
         await ctx.message.remove_reaction(constants.AFFIRMATIVE_REACTION_EMOJI, msg.author)
     
-    @base_tally.command(name='all')
+    @tally.command(name='all')
     @commands.bot_has_permissions(read_message_history=True)
     async def all(self, ctx, channel:discord.TextChannel, after, endRange=None):
         """
@@ -107,7 +111,7 @@ class EmoteHistory(commands.Cog):
         msg = await ctx.send(self.printDict(dict(sorted(emote_dict.items(), key=lambda x: x[1], reverse=True))))
         await ctx.message.remove_reaction(constants.AFFIRMATIVE_REACTION_EMOJI, msg.author)
         
-    @base_tally.command(name='everything')
+    @tally.command(name='everything')
     @commands.bot_has_permissions(read_message_history=True)
     @commands.is_owner()
     async def everything(self, ctx, after, endRange=None):
