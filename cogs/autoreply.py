@@ -22,10 +22,7 @@ class AutoReply(commands.Cog):
 
         await message.channel.send(user.display_name + ' is not currently available. They left this note:\n`' + reply['message'] + '`')
 
-    @commands.group(name='autoreply')
-    async def base_autoreply(self, ctx): pass
-
-    @base_autoreply.command(name='')
+    @commands.group(name='autoreply', invoke_without_command=True)
     async def autoreply(self, ctx, *, message=''):
         """
         Sets up or modifies an autoreply message for the command author. If no message is supplied, instead deletes any existing autoreply for the author.
@@ -70,7 +67,7 @@ class AutoReply(commands.Cog):
             await ctx.send('Updated autoreply for `' + ctx.author.display_name + '`')
             print('Updated auto reply for ' + ctx.author.display_name)
 
-    @base_autoreply.command(name='clear')
+    @autoreply.command(name='clear')
     @commands.is_owner()
     async def clear(self, ctx, user: discord.User):
         """
@@ -88,7 +85,7 @@ class AutoReply(commands.Cog):
             print('Removed user \"' + user.display_name + '\'s\" autoreply setting.')
             await ctx.send('Removed autoreply setting for `' + user.display_name + '`')
 
-    @base_autoreply.command(name='list')
+    @autoreply.command(name='list')
     @commands.is_owner()
     async def list(self, ctx):
         """

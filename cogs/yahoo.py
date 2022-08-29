@@ -504,11 +504,15 @@ class Yahoo(commands.Cog):
         return commands.check(predicate)
 
     @commands.group(aliases=['yahoo', 'fantasy'])
-    @enforce_sports_channel()
-    async def ff(self, ctx): pass
+    async def ff(self, ctx): 
+        """
+        Reads information on the locally configured Yahoo Fantasy Football League. Also provides a live updating gameday thread with NFL scoreboard and community-relevant FF matchups.
+        """
+        pass
 
     @ff.command()
     @enforce_user_registered()
+    @enforce_sports_channel()
     async def test(self, ctx):
         """
         A test command, which can be used to test components.
@@ -517,6 +521,7 @@ class Yahoo(commands.Cog):
         msg = await ctx.send('Successful Yahoo FF test')
  
     @ff.command(name='register')
+    @enforce_sports_channel()
     async def register(self, ctx, teamNo: int):
         """
         Register a team in the league to yourself. This facilitates other commands such as `wb ff team` to show you your own team by default.
@@ -544,6 +549,7 @@ class Yahoo(commands.Cog):
             await ctx.send('Error! You have already registered to a team in this channel. If you want to change your registration, use `wb ff unregister`')
 
     @ff.command(name='unregister')
+    @enforce_sports_channel()
     async def unregister(self, ctx):
         """
         Remove the binding between your discord user ID and one of the team IDs in the league.
@@ -557,6 +563,7 @@ class Yahoo(commands.Cog):
             await ctx.send('Success! Binding for ' + ctx.author.name + ' has been removed.')
 
     @ff.command(name='league')
+    @enforce_sports_channel()
     async def league(self, ctx):
         """
         Retrieve Yahoo Fantasy teams and IDs.
@@ -579,6 +586,7 @@ class Yahoo(commands.Cog):
         msg = await ctx.send(embed=embed)
 
     @ff.command(name='standings')
+    @enforce_sports_channel()
     async def standings(self, ctx):
         """
         Display the current standings page for the fantasy league.
@@ -606,6 +614,7 @@ class Yahoo(commands.Cog):
 
     # potentially include live IRL NFL scoreboard stuff with this, and extend that to the gameday routine.
     @ff.command(name='scoreboard')
+    @enforce_sports_channel()
     @enforce_user_registered()
     async def scoreboard(self, ctx, week: int = 0):
         """
@@ -642,6 +651,7 @@ class Yahoo(commands.Cog):
         print(end)
 
     @ff.command(name='matchups')
+    @enforce_sports_channel()
     async def matchups(self, ctx, week: int = 0):
         """
         Displays the team names for each matchup. Use to find specific matchup IDs without waiting for the scoreboard. 
@@ -667,6 +677,7 @@ class Yahoo(commands.Cog):
         msg = await ctx.send(embed=embed)
 
     @ff.command(name='matchup')
+    @enforce_sports_channel()
     @enforce_user_registered()
     async def matchup(self, ctx, matchup: Optional[int] = 0, week: Optional[int] = 0):
         """
@@ -688,6 +699,7 @@ class Yahoo(commands.Cog):
         msg = await ctx.send(embed=embed)
         
     @ff.command(name='team')
+    @enforce_sports_channel()
     @enforce_user_registered()  
     async def team(self, ctx, teamId: Optional[int] = 0, week: Optional[int] = 0):
         """
@@ -756,6 +768,7 @@ class Yahoo(commands.Cog):
 
         
     @ff.command(name='gameday')
+    @enforce_sports_channel()
     @enforce_user_registered()
     async def gameday(self, ctx):
         """

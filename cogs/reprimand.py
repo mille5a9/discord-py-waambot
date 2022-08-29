@@ -45,10 +45,7 @@ class Reprimand(commands.Cog):
 
         return response
 
-    @commands.group(name='reprimand')
-    async def base_reprimand(self, ctx): pass
-
-    @base_reprimand.command(name='')
+    @commands.group(name='reprimand', invoke_without_command=True)
     async def reprimand(self, ctx, mandee: discord.User, *, reason=''):
         """
         Basic reprimand command, called with the name of the reprimandee. Record is made of the reprimand in the database.
@@ -56,7 +53,7 @@ class Reprimand(commands.Cog):
         confirmation = await self.process_reprimand(mandee, reason)
         msg = await ctx.send(confirmation)
 
-    @base_reprimand.command(name='list')
+    @reprimand.command(name='list')
     async def list(self, ctx, mandee:discord.User=None):
         """
         No User: Prints the top ten reprimandees, and in the case of a log >10 records, writes the whole log to a text file and attaches. 
@@ -123,7 +120,7 @@ class Reprimand(commands.Cog):
                 await ctx.send("Here is the full reprimand log:", file=discord.File(file, "result.txt"))
 
 
-    @base_reprimand.command(name='clear')
+    @reprimand.command(name='clear')
     @commands.is_owner()
     async def clear(self, ctx, mandee: discord.User):
         """
