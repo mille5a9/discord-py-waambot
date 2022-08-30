@@ -83,7 +83,6 @@ class Yahoo(commands.Cog):
         return str(utc_dt.astimezone(tz).strftime(f'%m-%d'))
 
     def getYahooQueryObject(self):
-        if (self.config['old_game_id'] is not None): return YahooQuery('data/', self.config[LEAGUE_ID], game_id=self.config['old_game_id'])
         return YahooQuery('data/', self.config[LEAGUE_ID])
 
     def getIntCurrentWeek(self):
@@ -244,8 +243,8 @@ class Yahoo(commands.Cog):
             team2 = competitors[0] #home
             team1Name = team1['team']['shortDisplayName']
             team2Name = team2['team']['shortDisplayName']
-            team1Record = '(' + team1['records'][0]['summary'] + ')'
-            team2Record = '(' + team2['records'][0]['summary'] + ')'
+            team1Record = ('(' + team1['records'][0]['summary'] + ')') if 'records' in team1 else ''
+            team2Record = ('(' + team2['records'][0]['summary'] + ')') if 'records' in team2 else ''
             team1Score = team1['score']
             team2Score = team2['score']
             
